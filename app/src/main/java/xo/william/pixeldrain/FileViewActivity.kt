@@ -4,140 +4,144 @@ import android.os.Bundle
 import android.util.Log
 import android.view.MenuItem
 import android.view.View
-import android.widget.*
+import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.MutableLiveData
 import com.bumptech.glide.Glide
 import com.github.kittinunf.fuel.core.requests.CancellableRequest
 import com.github.kittinunf.fuel.core.requests.tryCancel
 import com.github.kittinunf.result.Result
-import com.google.android.exoplayer2.MediaItem
-import com.google.android.exoplayer2.SimpleExoPlayer
-import com.google.android.exoplayer2.ui.PlayerView
-import kotlinx.android.synthetic.main.activity_file_view.*
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import xo.william.pixeldrain.api.FuelService
+import xo.william.pixeldrain.databinding.ActivityFileViewBinding
 import xo.william.pixeldrain.fileList.InfoModel
-
 
 class FileViewActivity : AppCompatActivity() {
 
     private val format = Json { ignoreUnknownKeys = true }
-    private lateinit var infoModel: InfoModel;
-
-    private lateinit var exoPlayer: SimpleExoPlayer
+    private lateinit var infoModel: InfoModel
+    private lateinit var binding: ActivityFileViewBinding
     private lateinit var request: CancellableRequest
 
     private var textLiveData = MutableLiveData<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_file_view)
-        setSupportActionBar(sub_toolbar)
+        try {
+            binding = ActivityFileViewBinding.inflate(layoutInflater)
+            setContentView(binding.root)
+            
+            setSupportActionBar(binding.subToolbar)
+            supportActionBar?.apply {
+                setDisplayHomeAsUpEnabled(true)
+            }
 
-        supportActionBar?.apply {
-            setDisplayHomeAsUpEnabled(true)
+            val infoModelString: String? = intent.getStringExtra("infoModel")
+            if (infoModelString != null) {
+                infoModel = format.decodeFromString(infoModelString)
+            } else {
+                infoModel = InfoModel("")
+                Toast.makeText(this, "Something went wrong", Toast.LENGTH_LONG).show()
+            }
+            
+            // Registrujeme vlastní callback pro tlačítko zpět
+            onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    cleanup()
+                    finish()
+                }
+            })
+
+            loadFile()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Error during initialization: ${e.message}", Toast.LENGTH_LONG).show()
+            Log.e("FileViewActivity", "Error during initialization", e)
+            finish()
         }
-
-        val infoModelString: String? = intent.getStringExtra("infoModel")
-        if (infoModelString !== null) {
-            infoModel = format.decodeFromString(infoModelString);
-        } else {
-            infoModel = InfoModel("")
-            Toast.makeText(this, "Something went wrong", Toast.LENGTH_LONG).show();
-        }
-
-        loadFile()
     }
 
     private fun loadFile() {
-        val type = infoModel.mime_type;
-        if (type.contains("image")) {
-            loadImage();
-        }
-        if (type.contains("video") || type.contains("audio")) {
-            loadVideo()
-        }
-        if (type.contains("text")) {
-            loadText();
+        try {
+            val type = infoModel.mime_type
+            when {
+                type.contains("image") -> loadImage()
+                type.contains("video") || type.contains("audio") -> {
+                    // Dočasně zobrazíme pouze informaci o videu místo přehrávání
+                    binding.fileProgressBar.visibility = View.GONE
+                    Toast.makeText(this, "Video/audio playback temporarily disabled", Toast.LENGTH_LONG).show()
+                }
+                type.contains("text") -> loadText()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Error loading file: ${e.message}", Toast.LENGTH_LONG).show()
+            Log.e("FileViewActivity", "Error loading file", e)
         }
     }
 
     private fun loadImage() {
-        val imageFile = findViewById<ImageView>(R.id.imageFile)
-        val fileProgress = findViewById<ProgressBar>(R.id.fileProgressBar);
         try {
             val urlString = infoModel.getFileUrl()
-            imageFile.visibility = View.VISIBLE
-            imageFile.contentDescription = infoModel.name;
-            Glide.with(this).load(urlString).fitCenter().into(imageFile)
-            fileProgress.visibility = View.GONE
+            binding.imageFile.visibility = View.VISIBLE
+            binding.imageFile.contentDescription = infoModel.name
+            Glide.with(this).load(urlString).fitCenter().into(binding.imageFile)
+            binding.fileProgressBar.visibility = View.GONE
         } catch (e: Exception) {
-            fileProgress.visibility = View.GONE
-            Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show();
+            binding.fileProgressBar.visibility = View.GONE
+            Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+            Log.e("FileViewActivity", "Error loading image", e)
         }
-    }
-
-    private fun loadVideo() {
-        val fileProgress = findViewById<ProgressBar>(R.id.fileProgressBar)
-        fileProgress.visibility = View.GONE
-        val videoExoFile = findViewById<PlayerView>(R.id.videoExoFile)
-        videoExoFile.visibility = View.VISIBLE
-        exoPlayer = SimpleExoPlayer.Builder(this).build()
-        videoExoFile.player = exoPlayer;
-
-        val mediaItem: MediaItem = MediaItem.fromUri(infoModel.getFileUrl())
-        exoPlayer.setMediaItem(mediaItem);
-        exoPlayer.prepare()
-
-        exoPlayer.play()
     }
 
     private fun loadText() {
-        request = FuelService().getFileText(infoModel.getFileUrl())
-            .responseString() { _, _, result ->
-                when (result) {
-                    is Result.Success -> {
-                        textLiveData.postValue(result.get())
-                    }
-                    is Result.Failure -> {
-                        textLiveData.postValue(result.error.exception.message)
+        try {
+            request = FuelService().getFileText(infoModel.getFileUrl())
+                .responseString { _, _, result -> 
+                    when (result) {
+                        is Result.Success -> {
+                            textLiveData.postValue(result.get())
+                        }
+                        is Result.Failure -> {
+                            textLiveData.postValue(result.error.exception.message)
+                        }
                     }
                 }
+
+            textLiveData.observe(this) {
+                binding.fileProgressBar.visibility = View.GONE
+                binding.textFile.text = it
+                binding.textFile.visibility = View.VISIBLE
+                binding.textScrollView.visibility = View.VISIBLE
             }
-
-        textLiveData.observe(this, {
-            val fileProgress = findViewById<ProgressBar>(R.id.fileProgressBar)
-            val textFile = findViewById<TextView>(R.id.textFile)
-            val textScrollView = findViewById<ScrollView>(R.id.textScrollView)
-            fileProgress.visibility = View.GONE
-            textFile.text = it
-            textFile.visibility = View.VISIBLE
-            textScrollView.visibility = View.VISIBLE
-        })
-    }
-
-
-    override fun onBackPressed() {
-        if (this::exoPlayer.isInitialized) {
-            exoPlayer.release();
+        } catch (e: Exception) {
+            binding.fileProgressBar.visibility = View.GONE
+            Toast.makeText(this, "Error loading text: ${e.message}", Toast.LENGTH_LONG).show()
+            Log.e("FileViewActivity", "Error loading text", e)
         }
-        if (this::request.isInitialized) {
-            request.tryCancel()
-        }
-        super.onBackPressed()
     }
-
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (this::exoPlayer.isInitialized) {
-            exoPlayer.release();
+        if (item.itemId == android.R.id.home) {
+            cleanup()
+            finish()
+            return true
         }
-        if (this::request.isInitialized) {
+        return super.onOptionsItemSelected(item)
+    }
+    
+    private fun cleanup() {
+        if (::request.isInitialized) {
             request.tryCancel()
         }
-        finish();
-        return super.onOptionsItemSelected(item)
+    }
+    
+    override fun onPause() {
+        super.onPause()
+    }
+    
+    override fun onDestroy() {
+        cleanup()
+        super.onDestroy()
     }
 }

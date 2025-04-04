@@ -4,178 +4,177 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
+import android.os.Looper
 import android.provider.MediaStore.MediaColumns.DISPLAY_NAME
 import android.util.Log
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
-import android.widget.ProgressBar
 import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SearchView
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import kotlinx.android.synthetic.main.activity_main.*
-import xo.william.pixeldrain.R.id.*
+import xo.william.pixeldrain.databinding.ActivityMainBinding
 import xo.william.pixeldrain.fileList.FileAdapter
 import xo.william.pixeldrain.model.FileViewModel
 import xo.william.pixeldrain.repository.SharedRepository
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var recyclerView: RecyclerView
+    private lateinit var binding: ActivityMainBinding
     private lateinit var viewAdapter: FileAdapter
-    private lateinit var viewManager: RecyclerView.LayoutManager
     private lateinit var fileViewModel: FileViewModel
     private lateinit var sharedRepository: SharedRepository
-    private lateinit var loginButtonRef:MenuItem
+    private lateinit var loginButtonRef: MenuItem
     private lateinit var registerButton: MenuItem
+    
+    private lateinit var filePickerLauncher: ActivityResultLauncher<Intent>
+    private lateinit var loginLauncher: ActivityResultLauncher<Intent>
 
     override fun onCreate(savedInstanceState: Bundle?) {
-
         super.onCreate(savedInstanceState)
-        sharedRepository = SharedRepository(this)
+        try {
+            setupActivityResultLaunchers()
+            
+            sharedRepository = SharedRepository(this)
 
-        setContentView(R.layout.activity_main)
-        setSupportActionBar(findViewById(R.id.main_toolbar))
-        fileViewModel = ViewModelProvider(this).get(FileViewModel::class.java)
-        fileViewModel.setSharedResponse(sharedRepository)
-        setRecyclerView()
+            binding = ActivityMainBinding.inflate(layoutInflater)
+            setContentView(binding.root)
+            
+            setSupportActionBar(binding.mainToolbar)
+            
+            fileViewModel = ViewModelProvider(this)[FileViewModel::class.java]
+            fileViewModel.setSharedResponse(sharedRepository)
+            
+            setRecyclerView()
 
-        fileViewModel.loadedFiles.observe(
-            this,
-            Observer { files -> files?.let {
-                    if (files.size > 0){
+            fileViewModel.loadedFiles.observe(this) { files ->
+                files?.let {
+                    if (files.isNotEmpty()) {
                         stopProgress(false)
                     }
-
-                viewAdapter.setFiles(files)
-            } })
-
-        fileViewModel.dbFiles.observe(
-            this,
-            Observer { files -> files?.let {
-                if (it.isEmpty() && !sharedRepository.isUserLoggedIn()){
-                    stopProgress(true)
+                    viewAdapter.setFiles(files)
                 }
-                fileViewModel.loadFiles(it)
-            } })
+            }
 
-        main_actionButton.setOnClickListener {
-            this.handleActionButton()
+            fileViewModel.dbFiles.observe(this) { files ->
+                files?.let {
+                    if (it.isEmpty() && !sharedRepository.isUserLoggedIn()) {
+                        stopProgress(true)
+                    }
+                    fileViewModel.loadFiles(it)
+                }
+            }
+
+            binding.mainActionButton.setOnClickListener {
+                handleActionButton()
+            }
+            
+            try {
+                fileViewModel.initializeData()
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error initializing data", e)
+                Toast.makeText(this, "Error initializing data: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error during initialization", e)
+            Toast.makeText(this, "Error during initialization: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+    
+    private fun setupActivityResultLaunchers() {
+        filePickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                val selectedFile = result.data?.data
+                startUpload(selectedFile)
+            }
+        }
+        
+        loginLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == 200) {
+                loginButtonRef.title = "Logout"
+                registerButton.isVisible = false
+                fileViewModel.loadFilesFromApi(loadedFiles = fileViewModel.loadedFiles)
+                Toast.makeText(this, "Logged in", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
-    fun stopProgress(empty: Boolean) {
-        initProgress.visibility = View.GONE
-        if (empty){
-            initText.visibility = View.VISIBLE
-        }else{
-            initText.visibility = View.GONE
-        }
+    private fun stopProgress(empty: Boolean) {
+        binding.initProgress.visibility = View.GONE
+        binding.initText.visibility = if (empty) View.VISIBLE else View.GONE
     }
 
-    fun setRecyclerView() {
-        viewManager = LinearLayoutManager(this)
+    private fun setRecyclerView() {
+        val viewManager = LinearLayoutManager(this)
         viewAdapter = FileAdapter(this, fileViewModel)
 
-        recyclerView = findViewById<RecyclerView>(R.id.file_recyclerView).apply {
-            // use this setting to improve performance if you know that changes
-            // in content do not change the layout size of the RecyclerView
+        binding.fileRecyclerView.apply {
             setHasFixedSize(true)
-
-            // use a linear layout manager
             layoutManager = viewManager
-
-            // specify an viewAdapter (see also next example)
             adapter = viewAdapter
         }
     }
 
-    /**
-     * Open file selection
-     */
-    fun handleActionButton() {
+    private fun handleActionButton() {
         val intent = Intent()
             .setType("*/*")
             .setAction(Intent.ACTION_GET_CONTENT)
 
-        startActivityForResult(Intent.createChooser(intent, "Select a file"), 111)
+        filePickerLauncher.launch(Intent.createChooser(intent, "Select a file"))
     }
 
-    /**
-     * Handle file selection
-     */
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-
-        if (requestCode == 111 && resultCode == RESULT_OK) {
-            val selectedFile = data?.data //The uri with the location of the file
-            startUpload(selectedFile)
-        }
-
-        if (resultCode == 200){
-            loginButtonRef.title = "Logout"
-            registerButton.isVisible = false;
-            fileViewModel.loadFilesFromApi(loadedFiles = fileViewModel.loadedFiles)
-            Toast.makeText(this, "Logged in", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    fun startUpload(selectedFile: Uri?) {
-        if (selectedFile !== null){
+    private fun startUpload(selectedFile: Uri?) {
+        if (selectedFile != null) {
             var fileName = selectedFile.path
 
-            //start progress
-            val mainProgress = findViewById<ProgressBar>(R.id.main_progress)
-            mainProgress.visibility = View.VISIBLE
+            binding.mainProgress.visibility = View.VISIBLE
 
-            //get fileName from uri
-                val filePathColumn = arrayOf(DISPLAY_NAME)
-                val cursor = contentResolver.query(selectedFile, filePathColumn, null, null, null)
-                if (cursor !== null) {
-                    cursor.moveToFirst()
-                    fileName = cursor.getString(0)
-                    cursor.close()
-                }
-                val stream = contentResolver.openInputStream(selectedFile)
+            val filePathColumn = arrayOf(DISPLAY_NAME)
+            val cursor = contentResolver.query(selectedFile, filePathColumn, null, null, null)
+            if (cursor != null) {
+                cursor.moveToFirst()
+                fileName = cursor.getString(0)
+                cursor.close()
+            }
+            val stream = contentResolver.openInputStream(selectedFile)
 
-            if(sharedRepository.isUserLoggedIn()){
-                    fileViewModel.uploadPost(stream, fileName, sharedRepository.getAuthKey(),this::finishUpload)
-                }else{
-                    fileViewModel.uploadAnonPost(stream, fileName, this::finishUpload)
-                }
+            if (sharedRepository.isUserLoggedIn()) {
+                fileViewModel.uploadPost(stream, fileName, sharedRepository.getAuthKey(), this::finishUpload)
+            } else {
+                fileViewModel.uploadAnonPost(stream, fileName, this::finishUpload)
+            }
         }
     }
 
-    fun finishUpload(message: String?){
-        val handler = Handler(this.mainLooper)
-        handler.post(Runnable {
+    private fun finishUpload(message: String?) {
+        val handler = Handler(Looper.getMainLooper())
+        handler.post {
             Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-        })
+        }
 
-        val mainProgress  =   findViewById<ProgressBar>(R.id.main_progress)
-        mainProgress.visibility = View.INVISIBLE
+        binding.mainProgress.visibility = View.INVISIBLE
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         val inflater: MenuInflater = menuInflater
         inflater.inflate(R.menu.main_toolbar, menu)
 
-        loginButtonRef = menu.findItem(action_login)
-        registerButton = menu.findItem(action_register)
-        if (sharedRepository.isUserLoggedIn()){
-            menu.findItem(action_login).title = "Logout"
+        loginButtonRef = menu.findItem(R.id.action_login)
+        registerButton = menu.findItem(R.id.action_register)
+        
+        if (sharedRepository.isUserLoggedIn()) {
+            loginButtonRef.title = "Logout"
             registerButton.isVisible = false
-        }else{
-            menu.findItem(action_login).title = "Login"
+        } else {
+            loginButtonRef.title = "Login"
             registerButton.isVisible = true
         }
 
-
-        val searchItem = menu.findItem(action_search)
+        val searchItem = menu.findItem(R.id.action_search)
         val searchView = searchItem.actionView as SearchView
 
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
@@ -183,6 +182,7 @@ class MainActivity : AppCompatActivity() {
                 viewAdapter.searchFiles(query)
                 return false
             }
+            
             override fun onQueryTextChange(newText: String?): Boolean {
                 return true
             }
@@ -197,31 +197,32 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
-        action_login -> {
-            if (sharedRepository.isUserLoggedIn()){
+        R.id.action_login -> {
+            if (sharedRepository.isUserLoggedIn()) {
                 sharedRepository.deleteToken()
                 item.title = "Login"
-                registerButton.isVisible = true;
+                registerButton.isVisible = true
                 Toast.makeText(this, "Logged out", Toast.LENGTH_SHORT).show()
-            }else{
+            } else {
                 openLoginActivity()
             }
             true
         }
-        action_register ->{
+        
+        R.id.action_register -> {
             openNewTabWindow()
             true
         }
 
-        else ->  super.onOptionsItemSelected(item)
+        else -> super.onOptionsItemSelected(item)
     }
 
-    fun openLoginActivity(){
+    private fun openLoginActivity() {
         val intent = Intent(this, LoginActivity::class.java)
-        startActivityForResult(intent, 200)
+        loginLauncher.launch(intent)
     }
 
-    fun openNewTabWindow() {
+    private fun openNewTabWindow() {
         val uris = Uri.parse("https://pixeldrain.com/register")
         val intents = Intent(Intent.ACTION_VIEW, uris)
         val b = Bundle()

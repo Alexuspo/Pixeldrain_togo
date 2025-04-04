@@ -29,6 +29,9 @@ class FileViewModel(application: Application) : AndroidViewModel(application) {
     init {
         repository = FileRepository(fileDao)
         dbFiles = repository.getDatabaseFiles()
+    }
+
+    fun initializeData() {
         loadFilesFromApi(loadedFiles)
     }
 
@@ -48,7 +51,6 @@ class FileViewModel(application: Application) : AndroidViewModel(application) {
     fun setSharedResponse(sharedRepository: SharedRepository) {
         this.sharedRepository = sharedRepository
     }
-
 
     /**
      * Launching a new coroutine to insert the data in a non-blocking way

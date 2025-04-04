@@ -50,6 +50,9 @@ class FileRepository(private val fileDao: FileDao) {
                     loadedFiles.value?.add(infoFile)
                     loadedFiles.postValue(loadedFiles.value)
                 }
+                is Result.Failure -> {
+                    Log.e("FileRepository", "Failed to get file info: ${result.error.message}")
+                }
             }
         }
     }
@@ -61,6 +64,9 @@ class FileRepository(private val fileDao: FileDao) {
                     val infoModelList = format.decodeFromString<InfoModelList>(result.get())
                     loadedFiles.value?.addAll(infoModelList.files)
                     loadedFiles.postValue(loadedFiles.value)
+                }
+                is Result.Failure -> {
+                    Log.e("FileRepository", "Failed to load API files: ${result.error.message}")
                 }
             }
         }

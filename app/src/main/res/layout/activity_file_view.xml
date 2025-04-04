@@ -27,7 +27,7 @@
         app:title="@string/app_name" />
 
 
-    <com.google.android.exoplayer2.ui.PlayerView
+    <androidx.media3.ui.PlayerView
         android:id="@+id/videoExoFile"
         android:layout_width="0dp"
         android:layout_height="0dp"

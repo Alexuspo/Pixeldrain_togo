@@ -39,6 +39,28 @@ Get the app from our [releases page](https://github.com/wimvdputten/Pixeldrain_a
 * [ExoPlayer](https://github.com/google/ExoPlayer) - Used for playing video and audio files
 * [Glide](https://github.com/bumptech/glide) - Used for loading images by url
 
+## Setting Up for Development
+
+This project requires JDK 17 to build properly when using Android Studio. If you have JDK 21 installed, you may encounter compatibility issues with the build tools.
+
+### Building with JDK 17
+
+1. Download and install JDK 17 from [Oracle](https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html) or [OpenJDK](https://jdk.java.net/archive/)
+
+2. Either:
+   - Run the `use_jdk17.bat` script before building from command line, or
+   - Configure Android Studio to use JDK 17 for this project:
+     - File > Settings > Build, Execution, Deployment > Build Tools > Gradle
+     - Set Gradle JVM to JDK 17
+
+3. Build the project:
+   ```
+   ./gradlew clean build
+   ```
+
+### Troubleshooting
+
+If you encounter "Unsupported class file major version 65" errors, make sure you're using JDK 17 to build the project, not JDK 21.
 
 ## Credit
 
