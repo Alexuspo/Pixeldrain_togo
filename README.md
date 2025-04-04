@@ -27,7 +27,7 @@ Features include:
 
 ## Download
 
-Get the app from our [releases page](https://github.com/wimvdputten/Pixeldrain_android/releases).
+Get the app from our [releases page](https://github.com/Alexuspo/Pixeldrain_togo/releases).
 
 ## Permision
 * Internet permision - Used for making api calls, uploading files and retrieving files.
