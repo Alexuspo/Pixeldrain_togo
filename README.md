@@ -41,7 +41,7 @@ Get the app from our [releases page](https://github.com/wimvdputten/Pixeldrain_a
 
 
 ## Credit
-* **Alexandr Pomykacz** - *Clean up of the so it can be used on Android 14*
+* **Alexandr Pomykacz** - *Clean up of App so it can be used on Android 14*
 * **Original Creator Wim van der Putten** - *Original Creator of Pixeldrain Android*
 * **Fornax** - *Creator of Pixeldrain* [Github](https://github.com/Fornax96)
 
