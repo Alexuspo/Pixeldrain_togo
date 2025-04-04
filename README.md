@@ -1,4 +1,4 @@
-# ![app icon](https://raw.githubusercontent.com/wimvdputten/Pixeldrain_android/master/app/src/main/res/mipmap-hdpi/ic_launcher_round.png) Pixeldrain Android
+# ![app icon](https://raw.githubusercontent.com/wimvdputten/Pixeldrain_android/master/app/src/main/res/mipmap-hdpi/ic_launcher_round.png) Pixeldrain to go Android
 
 Pixeldrain is a file sharing website built for speed and ease of use.
 Pixeldrain is built by [Fornax](https://twitter.com/Fornax96)
@@ -27,7 +27,7 @@ Features include:
 
 ## Download
 
-Get the app from our [releases page](https://github.com/wimvdputten/Pixeldrain_android/releases).
+Get the app from our [releases page](https://github.com/Alexuspo/Pixeldrain_togo/releases).
 
 ## Permision
 * Internet permision - Used for making api calls, uploading files and retrieving files.
@@ -63,7 +63,7 @@ This project requires JDK 17 to build properly when using Android Studio. If you
 If you encounter "Unsupported class file major version 65" errors, make sure you're using JDK 17 to build the project, not JDK 21.
 
 ## Credit
-
-* **Wim van der Putten** - *Creator of Pixeldrain Android*
+* **Alexandr Pomykacz** - *Clean up of App so it can be used on Android 14*
+* **Original Creator Wim van der Putten** - *Original Creator of Pixeldrain Android*
 * **Fornax** - *Creator of Pixeldrain* [Github](https://github.com/Fornax96)
 
