@@ -1,4 +1,4 @@
-# ![app icon](https://raw.githubusercontent.com/wimvdputten/Pixeldrain_android/master/app/src/main/res/mipmap-hdpi/ic_launcher_round.png) Pixeldrain Android
+# ![app icon](https://raw.githubusercontent.com/wimvdputten/Pixeldrain_android/master/app/src/main/res/mipmap-hdpi/ic_launcher_round.png) Pixeldrain to go Android
 
 Pixeldrain is a file sharing website built for speed and ease of use.
 Pixeldrain is built by [Fornax](https://twitter.com/Fornax96)
@@ -41,7 +41,7 @@ Get the app from our [releases page](https://github.com/wimvdputten/Pixeldrain_a
 
 
 ## Credit
-
-* **Wim van der Putten** - *Creator of Pixeldrain Android*
+* **Alexandr Pomykacz** - *Clean up of the so it can be used on Android 14*
+* **Original Creator Wim van der Putten** - *Original Creator of Pixeldrain Android*
 * **Fornax** - *Creator of Pixeldrain* [Github](https://github.com/Fornax96)
 
